@@ -1,0 +1,21 @@
+\documentclass{minimal}
+\input{regression-test}
+\RequirePackage{luaalignstate}
+
+\begin{document}
+
+\ExplSyntaxOn
+
+\START
+
+\TEST {get~in~spec} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign to \luaalignstate_value: sp {
+            # \cr
+        }
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\END

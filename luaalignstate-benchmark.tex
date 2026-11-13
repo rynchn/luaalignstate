@@ -1,0 +1,13 @@
+\RequirePackage{luaalignstate}
+\ExplSyntaxOn
+\iow_term:n {BENCHMARKING~value:}
+\benchmark:n {\l_tmpa_int = \luaalignstate_value: \exp_stop_f:}
+\iow_term:n {BENCHMARKING~get:}
+\benchmark:n {\luaalignstate_get:N \l_tmpa_tl}
+\iow_term:n {BENCHMARKING~set:}
+\benchmark:n {\luaalignstate_set:n \c_zero_int}
+\iow_term:n {BENCHMARKING~set-add:}
+\benchmark:n {\luaalignstate_set:n {\luaalignstate_value: + \c_zero_int}}
+\iow_term:n {BENCHMARKING~add:}
+\benchmark:n {\luaalignstate_add:n \c_zero_int}
+\tex_end:D

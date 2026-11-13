@@ -1,0 +1,16 @@
+This is a generated file for the l3build validation system.
+Don't change this file in any respect.
+============================================================
+TEST 1: get in preamble
+============================================================
+1000001
+! luaalignstate Fatal Error: Cannot access from alignment preamble.
+<to be read again> 
+                   \endtemplate 
+l. ...}
+Accessing the alignment counter from a preamble causes memory corruption.
+I'm going to quit now.
+! Emergency stop.
+<recently read> \endtemplate 
+l. ...}
+(interwoven alignment preambles are not allowed)

@@ -1,0 +1,21 @@
+\documentclass{minimal}
+\input{regression-test}
+\RequirePackage{luaalignstate}
+
+\begin{document}
+
+\ExplSyntaxOn
+
+\START
+
+\TEST {get~in~preamble} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign {
+            \span \luaalignstate_value: # \cr
+        }
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\END

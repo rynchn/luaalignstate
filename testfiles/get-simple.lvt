@@ -1,0 +1,60 @@
+\documentclass{minimal}
+\input{regression-test}
+\RequirePackage{luaalignstate}
+
+\begin{document}
+
+\ExplSyntaxOn
+
+\START
+
+\TEST {use~toplevel} {
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {use~in~braceX1} {
+    { \luaalignstate_use:n \TYPE }
+}
+
+\TEST {use~after~group_align_safe_end:X2} {
+    \group_align_safe_end:
+    \group_align_safe_end:
+    \luaalignstate_use:n \TYPE
+    \group_align_safe_begin:
+    \group_align_safe_begin:
+}
+
+\TEST {value~toplevel} {
+    \l_tmpa_int = \luaalignstate_value: \exp_stop_f:
+    \TYPE {\int_use:N \l_tmpa_int}
+}
+
+\TEST {value~in~braceX1} {
+    \l_tmpa_int = \tex_expanded:D {\luaalignstate_value:} \exp_stop_f:
+    \TYPE {\int_use:N \l_tmpa_int}
+}
+
+\prg_replicate:nn {10} {\group_align_safe_end:}
+
+\TEST {get~after~group_align_safe_end:X10} {
+    \luaalignstate_get:N \l_tmpa_tl
+    \TYPE {\l_tmpa_tl}
+}
+
+\TEST {use_inline~after~group_align_safe_end:X10} {
+    \luaalignstate_use_inline:n {\TYPE {#1}}
+}
+
+\TEST {value~in~conditional} {
+    \ifnum \luaalignstate_value: > 999990 \exp_stop_f:
+        \TYPE {TOO~BIG}
+    \else:
+        \ifnum \luaalignstate_value: < 999990 \exp_stop_f:
+            \TYPE {TOO~SMALL}
+        \else:
+            \TYPE {JUST~RIGHT}
+        \fi:
+    \fi:
+}
+
+\END

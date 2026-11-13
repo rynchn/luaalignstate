@@ -1,0 +1,111 @@
+\documentclass{minimal}
+\input{regression-test}
+\RequirePackage{luaalignstate}
+
+\begin{document}
+
+\ExplSyntaxOn
+
+\START
+
+\TEST {use~in~cell~toplevel} {
+    \setbox0=\vbox\bgroup
+        \luaalignstate_use:n \TYPE
+        \halign\bgroup
+            # \cr
+            \relax \luaalignstate_use:n \TYPE \cr
+        \egroup
+    \egroup
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {use~in~bracedX2~cell} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign{
+            # \cr
+            \relax \luaalignstate_use:n \TYPE \cr
+        }
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {use~in~cell~bracedX2} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign{
+            # \cr
+            {{\luaalignstate_use:n \TYPE}} \cr
+        }
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {use~in~cell~during~align_peek()} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign{
+            # \cr
+            \luaalignstate_use:n \TYPE \cr
+        }
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {use~in~uj} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign{
+            \luaalignstate_use:n \TYPE \relax # \cr
+            \relax \cr
+        }
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {use~in~vj} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign{
+            # \luaalignstate_use:n \TYPE \cr
+            \relax \cr
+        }
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {value~in~cell} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign{
+            # \TYPE {\int_use:N \l_tmpa_int} \cr
+            \l_tmpa_int = \luaalignstate_value: \cr
+        }
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {value~in~cell~vj} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign{
+            # \TYPE {\int_use:N \l_tmpa_int} \cr
+            \l_tmpa_int = \use:nn \luaalignstate_value: \cr
+        }
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {value~during~align_peek()} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign\bgroup
+            # \TYPE {\int_use:N \l_tmpa_int} \group_align_safe_end: \cr
+        \exp_after:wN \egroup
+        \exp_after:wN \l_tmpa_int \luaalignstate_value:
+        \TYPE {\int_use:N \l_tmpa_int}
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\END

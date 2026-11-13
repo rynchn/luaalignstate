@@ -1,0 +1,652 @@
+% \iffalse meta-comment
+%<*preamble>
+%% SPDX-FileCopyrightText: 2026 Ruiyuan Chen
+%% SPDX-License-Identifier: MIT
+%%
+%% ---------------------------------------------------------------
+%% luaalignstate --- Access the alignment counter in LuaTeX
+%% ---------------------------------------------------------------
+%%
+%</preamble>
+%<*internal>
+\expandafter\ifx\csname LaTeXReleaseInfo\endcsname\relax
+    \def\endinstall{\endbatchfile}
+\else
+    \begingroup\let\endinstall\endgroup
+\fi
+%</internal>
+%<*install>
+\input docstrip.tex
+\keepsilent
+\askforoverwritefalse
+\def\MetaPrefix{\noexpand\CurrentMetaPrefix}
+\preamble
+\endpreamble
+\usepreamble\empty
+\usepostamble\defaultpreamble
+\usedir{tex/luatex/\jobname}
+\let\CurrentMetaPrefix\DoubleperCent
+\generate{\file{\jobname.sty}{
+    \from{\jobname.dtx}{preamble,package}
+}}
+%</install>
+%<*internal>
+\usedir{source/luatex/\jobname}
+\generate{\file{\jobname.ins}{
+    \from{\jobname.dtx}{preamble,install}
+}}
+%</internal>
+%<*install>
+\def\CurrentMetaPrefix{--}
+\generate{\file{\jobname.lua}{
+    \from{\jobname.dtx}{preamble,lua}
+}}
+%</install>
+%<install>\endbatchfile
+%<*internal>
+\endinstall
+%</internal>
+%<*driver>
+\documentclass{l3doc}
+\usepackage{microtype}
+\usepackage[l3doc]{fancyvrbx}
+\hypersetup{bookmarksopenlevel=2}
+\DisableCrossrefs
+\ExplSyntaxOn
+\makeatletter
+\sys_if_engine_luatex:T {
+    \usepackage{\jobname}
+}
+\bool_set_false:N \l__codedoc_allow_indexing_bool
+\cs_gset_protected:Npn \@wrindex #1 {}
+\cs_gset_protected:Npn \codeline@wrindex #1 {}
+\cs_gset_protected:Npn \__codedoc_index_page_hc:nn #1 #2 {}
+\cs_gset_protected:Npn \__codedoc_index_codeline_hc:nn #1 #2 {}
+\NewDocumentCommand \metacode {m} {
+    \textnormal {\textlangle \emph{#1} \textrangle}
+}
+\makeatother
+\ExplSyntaxOff
+\begin{document}
+\DocInput{\jobname.dtx}
+\end{document}
+%</driver>
+% \fi
+%
+% \title{\pkg{luaalignstate} --- Access the alignment counter in \LuaTeX{}}
+% \author{Ruiyuan Chen}
+% \date{}
+% \maketitle
+%
+%
+% In \TeX{}, the alignment brace counter, also known as ``master counter'' (according to the \TeX{}book) or |align_state| (according to the source code), is an internal variable that is used to track the balance between all braces |{| and |}| seen so far, and plays a subtle role in the handling of |\halign|/|\valign| and derived macros such as \LaTeX{}'s |tabular|.
+% The variable is not exposed to the macro language or even to the Lua libraries in \LuaTeX{}.
+% This makes certain rare bugs difficult to track down,\footnote{See e.g., \url{https://github.com/latex3/latex2e/issues/1468}.}
+% and also prevents some useful alignment tricks that would otherwise be possible.\footnote{For example, it is difficult to create a fully general mechanism that allows a colspan to be specified in a table cell other than at the very beginning.}
+%
+% This package provides a hack in \LuaTeX{} to directly inspect and modify the alignment brace counter.
+% There is an underlying format-independent Lua module, as well as a \LaTeX3 programming wrapper interface.
+%
+%
+% \section{Lua interface}
+%
+% The Lua module is loaded with
+% \begin{verbatim}
+% local luaalignstate = require"luaalignstate"
+% \end{verbatim}
+% which returns a table containing the following functions.
+%
+% \begin{function}{luaalignstate.getset()}
+% \begin{latexcodesyntax}
+% new, old = luaalignstate.getset(function (old_alignstate)
+%     return new_alignstate
+% end)
+% \end{latexcodesyntax}
+% The main interface.
+% Determines the current alignment counter, and optionally updates it in one go.
+% If the provided function is or returns |nil|, no update is made.
+%
+% \begin{texnote}
+% This function works by executing an empty |\halign|.
+% As such, it \emph{must not be called} while scanning the preamble of another alignment (via e.g., |\span\directlua|); doing so would lead to memory corruption.
+%
+% Because of this, the function will throw a fatal error if it detects that it was likely called from an alignment preamble, namely if |align_state| $< -500000$.
+% (This will also happen outside of alignment preambles, if you for some reason set |align_state| to a value less than $-500000$.)
+% \end{texnote}
+% \end{function}
+%
+% \begin{function}{
+%     luaalignstate.get(),
+%     luaalignstate.set(),
+%     luaalignstate.add(),
+% }
+% \begin{verbcodesyntax}
+% alignstate = luaalignstate.get()
+% new, old = luaalignstate.set(new_alignstate)
+% new, old = luaalignstate.add(increment)
+% \end{verbcodesyntax}
+% Simple wrappers around |getset()|.
+% \end{function}
+%
+%
+% \section{\LaTeX3 interface}
+%
+% The \LaTeX{} package is loaded with
+% \begin{expl3code}
+% \RequirePackage{luaalignstate}
+% \end{expl3code}
+% This loads the Lua module globally, and defines the following L3 programming functions.
+%
+% \begin{function}[EXP]{\luaalignstate_value:}
+% Expands in one step to the current value of the alignment counter (in decimal).
+%
+% \begin{texnote}
+% As with the Lua functions, this is \emph{not} safe to expand (via |\span|) while scanning the preamble of an alignment.
+% \end{texnote}
+% \end{function}
+%
+% Note that \cs{luaalignstate_value:} can be somewhat tricky to expand correctly in the desired ambient brace level:
+% for example,
+% \begin{expl3code}
+%     \tl_set:No \l_my_tl {\luaalignstate_value:}
+% \end{expl3code}
+% would likely set \cs{l_my_tl} to one or two more than the alignment counter value at the point that it is executed, depending on the implementation of \cs{tl_set:No}.
+%
+% For this reason, the following getter functions are provided as an alternative.
+%
+% \begin{function}{\luaalignstate_get:N}
+% \begin{expl3codesyntax}
+% \luaalignstate_get:N \meta{tl var}
+% \end{expl3codesyntax}
+% Sets the \meta{tl var} (locally) to the current value of the alignment counter.
+% \end{function}
+%
+% \begin{function}[EXP]{\luaalignstate_use:n}
+% \begin{expl3codesyntax}
+% \luaalignstate_use:n \Arg{code}
+% \end{expl3codesyntax}
+% Expands in two steps to \meta{code} followed by a brace group containing the current value of the alignment counter.
+% \end{function}
+%
+% \begin{function}[EXP]{\luaalignstate_use_inline:n}
+% \begin{expl3codesyntax}
+% \luaalignstate_use_inline:n \Arg{inline function}
+% \end{expl3codesyntax}
+% Expands in two steps to \meta{inline function} applied to the alignment counter value.
+% \end{function}
+%
+% \begin{function}{\luaalignstate_set:n}
+% \begin{expl3codesyntax}
+% \luaalignstate_set:n \Arg{int expr}
+% \end{expl3codesyntax}
+% Sets the alignment counter to the given \meta{int expr}.
+%
+% \begin{texnote}
+% The \meta{int expr} may refer to the previous alignment counter value via \cs{luaalignstate_value:}, which within the \meta{int expr} expands to the value at the point where \cs{luaalignstate_set:n} is called (i.e., outside any braces surrounding or part of \meta{int expr}).
+%
+% On the other hand, the \meta{int value} should not refer directly to \cs{currentgrouplevel}, \cs{currentgrouptype}, or \cs{lastnodetype}, as their values will be wrong.
+% \end{texnote}
+% \end{function}
+%
+% \begin{function}{\luaalignstate_add:n}
+% \begin{expl3codesyntax}
+% \luaalignstate_add:n \Arg{int expr}
+% \end{expl3codesyntax}
+% Adds \meta{int expr} to the alignment counter.
+%
+% \begin{texnote}
+% This may be expressed in terms of \cs{luaalignstate_set:n}, but is $\approx 2$\,ops faster.
+% Unlike above, here the \meta{int expr} should \emph{not} refer to \cs{luaalignstate_value:}.
+% \end{texnote}
+% \end{function}
+%
+%
+% \begin{implementation}
+% \newpage
+% \section{Implementation}
+%
+%    \begin{macrocode}
+%<*lua>
+%<@@=luaalignstate>
+%    \end{macrocode}
+%
+%
+% \subsection{Global imports}
+%
+% Import needed global functions.
+%    \begin{macrocode}
+local pairs = pairs
+local select = select
+%    \end{macrocode}
+% Import \LuaTeX{} modules.
+%    \begin{macrocode}
+local luatex = tex
+local luatex_token = token
+local luatex_node = node
+local luatex_status = status
+_ENV = nil
+%    \end{macrocode}
+% Import commonly used functions from modules.
+%    \begin{macrocode}
+local tex_getnest = luatex.getnest
+local tex_runtoks = luatex.runtoks
+local tex_quittoks = luatex.quittoks
+local token_command_id = luatex_token.command_id
+local token_new = luatex_token.new
+local token_get_next = luatex_token.get_next
+local token_scan_code = luatex_token.scan_code
+local token_put_next = luatex_token.put_next
+local token_unchecked_put_next = luatex_token.unchecked_put_next
+local node_direct_new = luatex_node.direct.new
+local node_direct_free = luatex_node.direct.free
+local node_direct_getnext = luatex_node.direct.getnext
+local node_direct_getdata = luatex_node.direct.getdata
+local node_direct_setnext = luatex_node.direct.setnext
+local node_direct_setdata = luatex_node.direct.setdata
+local node_direct_setfield = luatex_node.direct.setfield
+%    \end{macrocode}
+%
+%
+% \subsection{Constants}
+%
+% \begin{macro}[int]{EQ_...}
+% Some hardcoded eqtb locations (from \file{equivalents.h}).
+%    \begin{macrocode}
+local EQ_frozen_control_sequence = ((1 +1)+luatex_status.hash_size)
+local EQ_local_base = ((((((EQ_frozen_control_sequence+13 )+(5535-0 +1))+1)+19)+65536)+65536)
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{TOKEN_...}
+% Commonly used tokens.
+%    \begin{macrocode}
+local CS_TOKEN_FLAG = 0x1FFFFFFF
+local COMMAND_lua_local_call = token_command_id"lua_local_call"
+local TOKEN_bgroup = token_new(("{"):byte(), 1)
+local TOKEN_egroup = token_new(("}"):byte(), 2)
+local TOKEN_param = token_new(("#"):byte(), 6)
+local TOKEN_immediateassignment = token_new(5, token_command_id"convert")
+local TOKEN_nonstopmode = token_new(1, token_command_id"set_interaction")
+local TOKEN_halign = token_new(0, token_command_id"halign")
+local TOKEN_span = token_new(0x110002, 4)
+%    \end{macrocode}
+% From \file{equivalents.h}.
+% (NOTE: |\cr| must be a named control sequence, not a nameless internal token, since the internal token is treated as |out_param| when read.)
+%    \begin{macrocode}
+local TOKEN_cr = token_new(CS_TOKEN_FLAG + EQ_frozen_control_sequence + 1, 0)
+local TOKEN_endv = token_new(CS_TOKEN_FLAG + EQ_frozen_control_sequence + 6, 0)
+local TOKEN_everycr = token_new(EQ_local_base + 8, token_command_id"assign_toks")
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{MODE_hmode, MODE_vmode}
+% Horizontal and vertical mode constants (in |tex.nest.mode|).
+%    \begin{macrocode}
+local MODE_vmode
+for k, v in pairs(luatex.getmodevalues()) do
+    if v == "vertical" then MODE_vmode = k end
+end
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{NODEID_...}
+% Node types.
+%    \begin{macrocode}
+local NODEID_align_stack = luatex_node.id"align_stack"
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \subsection{Helpers}
+%
+% \begin{macro}[int]{tmp_whatsit_ptr}
+% A whatsit to help with allocations.
+%    \begin{macrocode}
+local tmp_whatsit_ptr = node_direct_new("whatsit", "user_defined")
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{new_lualocal}
+% Creates a new (expandable) luacall that's stored in the Lua C registry.
+%    \begin{macrocode}
+local function new_lualocal(f)
+%    \end{macrocode}
+% It is necessary to set the whatsit integer value to 0 first,
+% or else setting the lua value will kill any existing registry entry.
+%    \begin{macrocode}
+    node_direct_setfield(tmp_whatsit_ptr, "type", 100)  -- ("d"):byte()
+    node_direct_setdata(tmp_whatsit_ptr, 0)
+    node_direct_setfield(tmp_whatsit_ptr, "type", 108)  -- ("l"):byte()
+    node_direct_setdata(tmp_whatsit_ptr, f)
+    node_direct_setfield(tmp_whatsit_ptr, "type", 100)  -- ("d"):byte()
+    return token_new(node_direct_getdata(tmp_whatsit_ptr), COMMAND_lua_local_call)
+end
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{fatal_error()}
+% Raises a fatal error.
+% We could use any of the several tokens that triggers a |normal_error()|, |fatal_error()|, or |confusion()|.
+% Since this is called when the |align_state| is manipulated from alignment preambles, it seems that the ``interwoven alignment preamble'' error message is the most appropriate.
+% The |scan_code()| is used to flush the two token lists inserted by |runtoks()| from the error context.
+% (Unfortunately, there seems to be no way to also flush the pushed |\endtemplate|.)
+%    \begin{macrocode}
+local fatal_error do
+local fatal_error_msg
+local fatal_error_help
+local function fatal_error_run()
+    token_get_next()
+    token_put_next(TOKEN_endv)
+    if luatex.interactionmode > 1 then
+        token_put_next(TOKEN_immediateassignment, TOKEN_nonstopmode)
+    end
+    token_scan_code(0)
+    return luatex.error(fatal_error_msg, fatal_error_help)
+end
+function fatal_error(msg, help)
+    fatal_error_msg = msg
+    fatal_error_help = help or {}
+    return tex_runtoks(fatal_error_run)
+end
+end
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \subsection{Getting and setting the alignment counter}
+%
+% The module table.
+%    \begin{macrocode}
+local luaalignstate = {}
+%    \end{macrocode}
+%
+% Now for the main hack.
+% The strategy is to execute (the equivalent of)
+% \begin{expl3code}
+%     \{\metacode{determine \texttt{align_stack} location}}
+%     \halign{%
+%         \span\immediateassignment\everycr{}%
+%         #\cr
+%         \{\metacode{read/write \texttt{align_state} from \texttt{align_stack}}}
+%     }
+% \end{expl3code}
+% When \LuaTeX{} executes |\halign|, it creates a node of type |align_stack| (see \file{align.c}:|push_alignment()|), which contains a field that records the |align_state| before the alignment began, which is restored after the alignment ends.
+% Thus, the goal of the expandable luacall
+% \metacode{read/write \texttt{align_state} from \texttt{align_stack}}
+% is to access this field.
+% Note that because it is expandable, and we nullified the |\everycr| (\emph{inside} the outer |\halign| group, but outside of any cell), the alignment won't have any rows: everything takes place while |align_peek()| is looking for the first row, only to find the end-brace |}|.
+%
+% Unfortunately, the |align_stack| does not seem to be referenced from any nodes in the current list, so we cannot directly access it.
+% Instead we take advantage of the way that node allocation works in \LuaTeX{}: right before the |\halign|, we allocate a |align_stack| ourselves, record its address, and then free it, putting it onto the free list and ensuring that |\halign| will allocate in the same location.
+% (So this is an intentional use-after-free!)
+%
+% We export a main public function, which needs to pass arguments to several auxiliaries via upvariables;
+% we isolate these inside a |do| block for clarity.
+%    \begin{macrocode}
+local getset do
+%    \end{macrocode}
+%
+% \begin{macro}[int]{getset_align_stack_ptr}
+% The location of the |align_stack| node (an integer/|node.direct| pointer), determined right before the |\halign| as described above.
+%    \begin{macrocode}
+local getset_align_stack_ptr
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{getset_func, getset_oldval, getset_newval}
+% Used to pass the user-provided getset function and the old and new |align_state| values.
+%    \begin{macrocode}
+local getset_func, getset_oldval, getset_newval
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{getset_do}
+% Executed expandably inside of the |\halign|, right before it ends (without any rows).
+% Fetch the enclosing |align_state| from the |align_stack| node,
+% run the caller-provided update function,
+% and set the |align_state| to the new value if different.
+%    \begin{macrocode}
+local function getset_do()
+%    \end{macrocode}
+% The following calls |vlink(getset_align_stack_ptr + 3)|, which stores the enclosing |align_state|;
+% see
+% \file{lnodelib.c}:|lua_nodelib_direct_getnext()|
+% and
+% \file{align.c}:|push_alignment()|.
+%    \begin{macrocode}
+    local oldval = node_direct_getnext(getset_align_stack_ptr + 3) or 0
+    if oldval < -500000 then
+        return fatal_error(
+            "luaalignstate Fatal Error: Cannot access from alignment preamble",
+            {
+                "Accessing the alignment counter from a preamble causes memory corruption.",
+                "I'm going to quit now.",
+            }
+        )
+    end
+    getset_oldval = oldval
+    local newval = getset_func and getset_func(oldval)
+    if newval == nil then
+        getset_newval = oldval
+    else
+        if newval ~= oldval then
+            node_direct_setnext(getset_align_stack_ptr + 3, newval)
+        end
+        getset_newval = newval
+    end
+    token_put_next(TOKEN_egroup)
+    token_scan_code(0)
+    return tex_quittoks()
+end
+local TOKEN_getset_do = new_lualocal(getset_do)
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{TOKENS_getset}
+% The token list containing |\halign|, sans the close brace which is inserted by |getset_do()|.
+%    \begin{macrocode}
+local TOKENS_getset = {
+    TOKEN_halign, TOKEN_bgroup,
+        TOKEN_span, TOKEN_immediateassignment, TOKEN_everycr, TOKEN_bgroup, TOKEN_egroup,
+        TOKEN_param, TOKEN_cr,
+        TOKEN_getset_do,
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}[int]{getset_run}
+% The function that's executed by |tex.runtoks()|.
+%    \begin{macrocode}
+local function getset_run()
+%    \end{macrocode}
+% Remove the |\endlocalcontrol|.
+% This allows the user function to scan the token stream (see e.g., \cs{@@_set:w}),
+% which is also why we left off the close brace above.
+%    \begin{macrocode}
+    token_get_next()
+%    \end{macrocode}
+% Set the mode to internal vertical, to prevent |\halign| from complaining.
+% The enclosing mode is already remembered and restored by |runtoks()|.
+%    \begin{macrocode}
+    tex_getnest(tex_getnest("ptr")).mode = -MODE_vmode
+%    \end{macrocode}
+% Now put an |align_stack| on the free list, record its address, and insert the |halign| tokens.
+%    \begin{macrocode}
+    getset_align_stack_ptr = node_direct_new(NODEID_align_stack)
+    node_direct_free(getset_align_stack_ptr)
+    token_unchecked_put_next(TOKENS_getset)
+end
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{
+%     luaalignstate.getset(),
+% }
+% The actual main function.
+% The argument should take the current |align_state| as input, and return the modified value (if any).
+%    \begin{macrocode}
+function getset(func)
+    getset_func = func
+    tex_runtoks(getset_run)
+    getset_func = nil
+    return getset_newval, getset_oldval
+end
+luaalignstate.getset = getset
+end
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{
+%     luaalignstate.get(),
+%     luaalignstate.set(),
+%     luaalignstate.add(),
+% }
+% Simple wrappers.
+%    \begin{macrocode}
+function luaalignstate.get() return select(1, getset()) end
+do
+local newval
+local function retnewval()
+    return newval
+end
+local function addvals(oldval)
+    return oldval + newval
+end
+function luaalignstate.set(s)
+    newval = s
+    return getset(retnewval)
+end
+function luaalignstate.add(s)
+    newval = s
+    return getset(addvals)
+end
+end
+%    \end{macrocode}
+% \end{macro}
+%
+% Clean up and return.
+%    \begin{macrocode}
+node_direct_setfield(tmp_whatsit_ptr, "type", 100)  -- ("d"):byte()
+node_direct_free(tmp_whatsit_ptr)
+return luaalignstate
+%</lua>
+%    \end{macrocode}
+%
+%
+% \subsection{\LaTeX{} package}
+%
+%    \begin{macrocode}
+%<*package>
+\ProvidesExplPackage
+    {luaalignstate}
+    {2026/10/01} {1}
+    {Access the alignment counter in LuaTeX}
+\sys_if_engine_luatex:F {
+    \PackageError {luaalignstate} {LuaTeX~required} {}
+    \file_input_stop:
+}
+%    \end{macrocode}
+% In \LaTeX{}, we create the Lua functions the standard way, using |luatexbase|.
+% To keep the Lua module \LaTeX{}-independent, we settle for a short block of inline Lua code.
+%    \begin{macrocode}
+\group_begin: \use:n {
+    \char_set_catcode_space:n {32}
+    \char_set_catcode_other:N \\
+    \use:nnn
+\group_end:
+\lua_now:n}{{
+    local tostring = tostring
+    local tex_sprint = tex.sprint
+    local token_scan_int = token.scan_int
+    local token_set_lua = token.set_lua
+    local token_set_macro = token.set_macro
+    local lua_functions_table = lua.get_functions_table()
+    local luatexbase_new_luafunction = luatexbase.new_luafunction
+    luaalignstate = require"luaalignstate"
+    local luaalignstate_getset = luaalignstate.getset
+    local luaalignstate_add = luaalignstate.add
+    _ENV = nil
+    local function luacmd(name, f, ...)
+        local id = luatexbase_new_luafunction(name)
+        lua_functions_table[id] = f
+        token_set_lua(name, id, "global", ...)
+    end
+%    \end{macrocode}
+%
+% \begin{macro}[EXP]{\luaalignstate_value:}
+% The getter is straightforward.
+%    \begin{macrocode}
+    luacmd("luaalignstate_value:", function ()
+        return tex_sprint(-2, tostring(luaalignstate_getset()))
+    end)
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{
+%     \@@_set:w,
+%     \@@_add:w,
+%     \luaalignstate_set:n,
+%     \luaalignstate_add:n,
+% }
+% \begin{expl3codesyntax}
+% \@@_set:w \<integer>
+% \@@_add:w \<integer>
+% \end{expl3codesyntax}
+% For the setters, we make a luacall that uses primitive-like syntax, and a macro wrapper.
+% The setter uses |getset()| rather than |set()|, to support accessing the old value during evaluation of the new value, by locally redefining \cs{luaalignstate_value:} (within the |\halign| group) to a token list containing the old value.
+%    \begin{macrocode}
+    local function set_scan(old_alignstate)
+        token_set_macro("luaalignstate_value:", tostring(old_alignstate))
+        return token_scan_int()
+    end
+    luacmd("@@_set:w", function ()
+        return luaalignstate_getset(set_scan)
+    end, "protected")
+%    \end{macrocode}
+% Note that $\cs{@@_set:w}$ doesn't scan its argument until \emph{inside} the |\halign|, whereas \cs{@@_add:w} scans its argument immediately, before initiating the |\halign|.
+%    \begin{macrocode}
+    luacmd("@@_add:w", function ()
+        return luaalignstate_add(token_scan_int())
+    end, "protected")
+}}%
+\cs_new_protected:Npn \luaalignstate_set:n #1 {
+    \@@_set:w \tex_numexpr:D #1 \scan_stop:
+}
+\cs_new_protected:Npn \luaalignstate_add:n #1 {
+    \@@_add:w \tex_numexpr:D #1 \scan_stop:
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{
+%     \luaalignstate_get:N,
+%     \luaalignstate_use:n,
+%     \luaalignstate_use_inline:n,
+% }
+% For the in-context getters, we expand |\luaalignstate_value:| using brace tricks to balance the alignment counter.
+%    \begin{macrocode}
+\cs_new_protected:Npn \luaalignstate_get:N #1 {
+    \tex_edef:D #1 { \if_false: } \fi: \luaalignstate_value: \if_false: { \fi: }
+}
+\cs_new:Npn \luaalignstate_use:n #1 {
+    \tex_expanded:D {
+        \tex_unexpanded:D {#1}
+        { \if_false: }} \fi: \luaalignstate_value: \if_false: {{ \fi: }
+    }
+}
+\cs_new:Npn \luaalignstate_use_inline:n #1 {
+    \exp:w
+    \tex_immediateassignment:D \cs_gset_nopar:Npn \@@_tmp:w ##1 {\exp_end: #1}
+    \exp_after:wN \@@_tmp:w \tex_expanded:D {
+        { \if_false: }} \fi: \luaalignstate_value: \if_false: {{ \fi: }
+    }
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+%</package>
+%    \end{macrocode}
+%
+%
+% \end{implementation}

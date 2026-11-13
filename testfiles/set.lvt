@@ -1,0 +1,73 @@
+\documentclass{minimal}
+\input{regression-test}
+\RequirePackage{luaalignstate}
+
+\begin{document}
+
+\ExplSyntaxOn
+
+\START
+
+\TEST {set~toplevel} {
+    \luaalignstate_use:n \TYPE
+    \luaalignstate_set:n {1234}
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {set~double~in~braces} {
+    \luaalignstate_use:n \TYPE
+    {\luaalignstate_set:n {\luaalignstate_value: * 2}}
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {set~in~align} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign{
+            # \cr
+            \relax
+            \luaalignstate_use:n \TYPE
+            \luaalignstate_set:n {1}
+            \group_align_safe_end:
+            \cr
+        }
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {set~in~uj} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign{
+            \luaalignstate_use:n \TYPE
+            \luaalignstate_set:n {0}
+            \luaalignstate_use:n \TYPE
+            \luaalignstate_set:n {1234567}
+            \luaalignstate_use:n \TYPE
+            \relax
+            # \cr
+            \luaalignstate_use:n \TYPE \cr
+        }
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\TEST {set~in~vj} {
+    \setbox0=\vbox{
+        \luaalignstate_use:n \TYPE
+        \halign{
+            #
+            \luaalignstate_use:n \TYPE
+            \luaalignstate_set:n {-12345}
+            \luaalignstate_use:n \TYPE
+            \luaalignstate_set:n {99999999}
+            \luaalignstate_use:n \TYPE
+            \cr
+            \relax
+            \luaalignstate_use:n \TYPE \cr
+        }
+    }
+    \luaalignstate_use:n \TYPE
+}
+
+\END

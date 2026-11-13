@@ -1,0 +1,348 @@
+%% SPDX-FileCopyrightText: 2025 Ruiyuan Chen
+%% SPDX-License-Identifier: MIT
+%%
+%% ---------------------------------------------------------------
+%% fancyvrbx --- Extensions to fancyvrb
+%% ---------------------------------------------------------------
+%% 
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesExplPackage
+    {fancyvrbx}
+    {2025/01/01}
+    {0}
+    {}
+\RequirePackageWithOptions{fancyvrb}
+\cs_if_free:NT \exp_last_unbraced:NNoe {
+    \cs_new:Npn \exp_last_unbraced:NNoe {\::N \::o \::e_unbraced \:::}
+}
+\cs_new_eq:NN \__fancyvrbx_env_define_orig:nnn \DefineVerbatimEnvironment
+\cs_set_protected:Npn \DefineVerbatimEnvironment #1 #2 #3 {
+    \cs_if_exist:cTF {FVB@#2} {
+        \__fancyvrbx_env_define_orig:nnn {#1} {#2} {#3}
+    } {
+        \exp_args:Nnee \__fancyvrbx_env_define_orig:nnn {#1} {\__fancyvrbx_env_get_baseenv:c {#2}} {\__fancyvrbx_env_get_keyvals:c {#2}, \exp_not:n {#3}}
+    }
+}
+\cs_new:Nn \__fancyvrbx_env_get_baseenv:N {
+    \tex_unexpanded:D \exp_after:wN \exp_after:wN \exp_after:wN {\exp_after:wN \use_iii:nnn #1}
+}
+\cs_generate_variant:Nn \__fancyvrbx_env_get_baseenv:N {c}
+\cs_new:Nn \__fancyvrbx_env_get_keyvals:N {
+    \tex_unexpanded:D \exp_after:wN \exp_after:wN \exp_after:wN {\exp_after:wN \use_ii:nnn #1}
+}
+\cs_generate_variant:Nn \__fancyvrbx_env_get_keyvals:N {c}
+\regex_const:Nn \c__fancyvrbx_env_end_regex {\\end\ *\{([^\{\}]*)\}(.*)$}
+\cs_new_protected:Npn \FV@CheckEnd #1 {
+    \group_begin:
+    \int_set:Nn \tex_escapechar:D {`\\}
+    \exp_args:NNe
+    \regex_extract_once:NnNTF \c__fancyvrbx_env_end_regex {\tl_to_str:n {#1}} \l_tmpa_seq {
+        \str_if_eq:eeTF {\FV@EnvironName} {\seq_item:Nn \l_tmpa_seq 2} {
+            \exp_args:NNNe
+            \group_end:
+            \tl_set:Nn \@tempb {\seq_item:Nn \l_tmpa_seq 3}
+            \tl_set_eq:NN \@tempa \FV@EnvironName
+        } {
+            \group_end:
+            \tl_clear:N \@tempa
+        }
+    } {
+        \group_end:
+        \tl_clear:N \@tempa
+    }
+}
+\cs_set_eq:NN \FV@@@CheckEnd \c_empty_tl
+\cs_set_eq:NN \FV@DefineCheckEnd \prg_do_nothing:
+\cctab_new:N \g__fancyvrbx_doc_cctab
+\cs_new_protected:Nn \fancyvrbx_save_cctab: {
+    \cctab_gsave_current:N \g__fancyvrbx_doc_cctab
+}
+\AtBeginDocument {\fancyvrbx_save_cctab:}
+\tl_new:N \l__fancyvrbx_scan_item_tl
+\tl_new:N \l__fancyvrbx_scan_tail_tl
+\cs_new_protected:Npn \fancyvrbx_scan_item:N {
+    \fancyvrbx_scan_item:nN {}
+}
+\cs_new_protected:Nn \fancyvrbx_scan_item:nN {
+    \tex_expanded:D {\tex_unexpanded:D {
+    \__fancyvrbx_scan_item:nNn {#1} #2} \exp_after:wN} \exp_after:wN { \if_false: } \fi:
+}
+\cs_new_protected:Nn \__fancyvrbx_scan_item:nNn {
+    \group_begin:
+    \cctab_select:N \g__fancyvrbx_doc_cctab
+    #1 \scan_stop:
+    \int_set:Nn \tex_endlinechar:D {-1}
+    \int_set:Nn \tex_newlinechar:D {-1}
+    \exp_after:wN \__fancyvrbx_scan_item_aux:n \tex_scantokens:D {#3}
+    \tex_expanded:D {\tex_unexpanded:D {
+    \exp_last_unbraced:Noo #2 \l__fancyvrbx_scan_item_tl \l__fancyvrbx_scan_tail_tl}
+    \exp_after:wN} \if_false: { \fi: }
+}
+\cs_new_protected:Nn \__fancyvrbx_scan_item_aux:n {
+    \group_end:
+    \tl_set:Nn \l__fancyvrbx_scan_item_tl {#1}
+    \group_begin:
+    \tex_everyeof:D \exp_after:wN {\token_to_str:N : :}
+    \__fancyvrbx_scan_item_auxi:w \prg_do_nothing:
+}
+\exp_args:Nno \use:nn
+{\cs_new_protected:Npn \__fancyvrbx_scan_item_auxi:w #1} {\token_to_str:N : :} {
+    \group_end:
+    \exp_args:NNo \tl_set:Nn \l__fancyvrbx_scan_tail_tl {#1}
+}
+\str_new:N \l__fancyvrbx_scan_csname_str
+\cs_new_protected:Npn \fancyvrbx_scan_csname:N {
+    \fancyvrbx_scan_csname:nN {}
+}
+\cs_new_protected:Nn \fancyvrbx_scan_csname:nN {
+    \group_begin:
+    \str_clear:N \l__fancyvrbx_scan_csname_str
+    \cctab_select:N \g__fancyvrbx_doc_cctab
+    #1 \scan_stop:
+    \peek_analysis_map_inline:n {
+        \int_compare:nNnTF {"##3} < 3 {
+            \tl_set:Nn \l__fancyvrbx_scan_tail_tl {##1}
+            \peek_analysis_map_break:n {\__fancyvrbx_scan_csname_aux:N #2}
+        } {
+            \int_compare:nNnTF {\char_value_catcode:n {##2}} = {11} {
+                \str_put_right:Nx \l__fancyvrbx_scan_csname_str {##1}
+            } {
+                \str_if_empty:NTF \l__fancyvrbx_scan_csname_str {
+                    \str_set:Nx \l__fancyvrbx_scan_csname_str {##1}
+                    \tl_clear:N \l__fancyvrbx_scan_tail_tl
+                } {
+                    \tl_set:Nx \l__fancyvrbx_scan_tail_tl {##1}
+                }
+                \peek_analysis_map_break:n {\__fancyvrbx_scan_csname_aux:N #2}
+            }
+        }
+    }
+}
+\cs_new_protected:Nn \__fancyvrbx_scan_csname_aux:N {
+    \exp_last_unbraced:NNoe
+    \group_end:
+    #1 \l__fancyvrbx_scan_csname_str \l__fancyvrbx_scan_tail_tl
+}
+\cs_new:Nn \__fancyvrbx_cmd_csname:n {
+    __fancyvrbx_cmd ~ #1 :
+}
+\cs_new_protected:Npn \fancyvrbx_set_cmd:cn #1 {
+    \cs_set_protected:cpn {\__fancyvrbx_cmd_csname:n {#1}}
+}
+\cs_new_protected:Npn \fancyvrbx_set_cmd:cx #1 {
+    \cs_set_protected:cpx {\__fancyvrbx_cmd_csname:n {#1}}
+}
+\cs_new_protected:Npn \fancyvrbx_set_cmd:Nn #1 {
+    \exp_args:Ne \fancyvrbx_set_cmd:cn {\cs_to_str:N #1}
+}
+\cs_new_protected:Npn \fancyvrbx_set_cmd:Nx #1 {
+    \exp_args:Ne \fancyvrbx_set_cmd:cx {\cs_to_str:N #1}
+}
+\cs_new_protected:Npn \fancyvrbx_set_cmd:N #1 {
+    \fancyvrbx_set_cmd:Nn #1 {\fancyvrbx_scan_item:N #1}
+}
+\cs_new_protected:Npn \fancyvrbx_set_cs_formatter:N {
+    \cs_set_eq:NN \__fancyvrbx_format_cs:n
+}
+\cs_new_protected:Npn \fancyvrbx_set_cs_formatter:n {
+    \cs_set_protected:Npn \__fancyvrbx_format_cs:n ##1
+}
+\cs_new_protected:Nn \__fancyvrbx_format_cs:n {
+    \tex_char:D \tex_escapechar:D
+    #1
+}
+\cs_new_protected:Nn \__fancyvrbx_backslash:n {
+    \fancyvrbx_scan_csname:nN {#1} \__fancyvrbx_backslash_aux:n
+}
+\cs_new_protected:Nn \__fancyvrbx_backslash_aux:n {
+    \cs_if_exist:cTF {\__fancyvrbx_cmd_csname:n {#1}} {
+        \use:c {\__fancyvrbx_cmd_csname:n {#1}}
+    } {
+        \__fancyvrbx_format_cs:n {#1}
+    }
+}
+\cs_if_exist:cT {__codedoc_syntax:w} {
+\cs_new_protected:cpn {FV@Frame@l3docsyntax} {
+    \cs_set_eq:NN \FV@BeginListFrame \__fancyvrbx_frame_codedoc_syntax_begin:
+    \cs_set_eq:NN \FV@LeftListFrame \scan_stop:
+    \cs_set_eq:NN \FV@RightListFrame \scan_stop:
+    \cs_set_eq:NN \FV@EndListFrame \__fancyvrbx_frame_codedoc_syntax_end:
+}
+\cs_new_protected:Npn \__fancyvrbx_frame_codedoc_syntax_begin: {
+    \box_if_empty:NF \g__codedoc_syntax_box
+      { \msg_error:nn { l3doc } { multiple-syntax } }
+    \dim_set:Nn \l__codedoc_syntax_dim
+      {
+        \textwidth
+        \bool_if:NT \l__codedoc_long_name_bool
+          { + \marginparwidth - \l__codedoc_trial_width_dim }
+      }
+    \vbox_gset:Nw \g__codedoc_syntax_box
+        \small \ttfamily
+        \arrayrulecolor{white}
+        \cs_set:Npn \noalign {\cs_set_eq:NN \noalign \tex_noalign:D}
+        \toprule
+        \tex_hbox:D \c_group_begin_token
+            \strut
+            \vbox_top:w
+                \dim_set_eq:NN \hsize \l__codedoc_syntax_dim
+                \dim_set_eq:NN \textwidth \l__codedoc_syntax_dim
+                \dim_set_eq:NN \columnwidth \l__codedoc_syntax_dim
+}
+\cs_new_protected:Npn \__fancyvrbx_frame_codedoc_syntax_end: {
+            \vbox_end:
+        \c_group_end_token
+        \arrayrulecolor{black}
+    \vbox_gset_end:
+    \bool_if:NF \l__codedoc_in_function_bool
+      {
+        \begin{trivlist}\item\relax
+          \mode_leave_vertical:
+          \box_use_drop:N \g__codedoc_syntax_box
+        \end{trivlist}
+      }
+}
+}
+\tl_new:N \__fancyvrbx_backslash_catcodes_tl
+\define@key {FV} {backslash} [] {
+    \tl_clear:N \__fancyvrbx_backslash_catcodes_tl
+    \fvset {backslash*}
+    \tl_set:Nn \__fancyvrbx_backslash_catcodes_tl {#1}
+}
+\define@key {FV} {backslash*} [] {
+    \cs_set_protected:Npx \FV@CommandChars {
+        \char_set_catcode_active:N \exp_not:N \\
+        \cs_set_protected:Npn \exp_args:No \exp_not:o {\char_generate:nn {`\\} {13}} {
+            \__fancyvrbx_backslash:n {\exp_not:N \__fancyvrbx_backslash_catcodes_tl}
+        }
+    }
+    \tl_put_right:Nn \__fancyvrbx_backslash_catcodes_tl {#1}
+}
+\define@key {FV} {backslashcmd} {
+    \fvset {backslash*}
+    \fancyvrbx_set_cmd:N #1
+}
+\define@key {FV} {backslashbrace} [\use:n] {
+    \fvset {backslash*}
+    \fancyvrbx_set_cmd:Nx \{ {
+        \fancyvrbx_scan_item:N \exp_not:N #1
+        \c_left_brace_str
+    }
+}
+\define@key {FV} {backslashangle} [\meta] {
+    \fvset {backslash*}
+    \fancyvrbx_set_cmd:Nx \< {
+        \fancyvrbx_scan_item:nN {
+            \char_set_catcode_group_begin:N <
+            \char_set_catcode_group_end:N >
+        } \exp_not:N #1
+        \c_left_brace_str
+    }
+}
+\define@key {FV} {backslashdollar} [\ensuremath] {
+    \fvset {backslash*}
+    \fancyvrbx_set_cmd:Nx \$ {
+        \exp_not:n {
+        \fancyvrbx_scan_item:nN {
+            \char_set_catcode_group_end:N \$
+        } #1
+        }
+        \c_left_brace_str
+    }
+}
+\define@key {FV} {csformat} {
+    \fvset {backslash*}
+    \fancyvrbx_set_cs_formatter:n {#1}
+}
+\define@key {FV} {atletter} [] {
+    \tl_if_in:NnF \__fancyvrbx_backslash_catcodes_tl {\makeatletter} {
+        \tl_put_right:Nn \__fancyvrbx_backslash_catcodes_tl {\makeatletter}
+    }
+}
+\define@key {FV} {explsyntax} [] {
+    \tl_if_in:NnF \__fancyvrbx_backslash_catcodes_tl {\ExplSyntaxOn} {
+        \tl_put_right:Nn \__fancyvrbx_backslash_catcodes_tl {\ExplSyntaxOn}
+    }
+}
+\cs_if_exist:cT {__codedoc_replace_at_at:N} {
+\define@key {FV} {l3privatecs} [] {
+    \fvset {backslash*, explsyntax, atletter}
+    \fancyvrbx_set_cs_formatter:n {
+        \tex_char:D \tex_escapechar:D
+        \group_begin:
+        \tl_set:Nn \l_tmpa_tl {##1}
+        \__codedoc_replace_at_at:N \l_tmpa_tl
+        \l_tmpa_tl
+        \group_end:
+    }
+}
+}
+\keys_define:nn {__fancyvrbx} {
+    verbcode .default:n = {verbcode},
+    verbcode .code:n = {
+        \str_set:Nn \__fancyvrbx_env_verbcode_name_str {#1}
+        \DefineVerbatimEnvironment {#1} {Verbatim} {
+            backslashbrace,
+            backslashdollar,
+        }
+    },
+    latexcode .default:n = {latexcode},
+    latexcode .code:n = {
+        \str_if_exist:NF \__fancyvrbx_env_verbcode_name_str {
+            \fvxset {verbcode}
+        }
+        \str_set:Nn \__fancyvrbx_env_latexcode_name_str {#1}
+        \exp_args:NnV \DefineVerbatimEnvironment {#1} \__fancyvrbx_env_verbcode_name_str {
+            backslashangle=\meta,
+            backslashcmd=\cs,
+            backslashcmd=\meta,
+            backslashcmd=\marg,
+            backslashcmd=\oarg,
+        }
+    },
+    doc .default:n = {latexcode},
+    doc .meta:n = {latexcode={#1}},
+}
+\cs_if_exist:cT {__codedoc_replace_at_at:N} {
+\keys_define:nn {__fancyvrbx} {
+    expl3code .default:n = {expl3code},
+    expl3code .code:n = {
+        \str_if_exist:NF \__fancyvrbx_env_latexcode_name_str {
+            \fvxset {latexcode}
+        }
+        \str_set:Nn \__fancyvrbx_env_explcode_name_str {#1}
+        \exp_args:NnV \DefineVerbatimEnvironment {#1} \__fancyvrbx_env_latexcode_name_str {
+            backslashcmd=\Arg,
+            l3privatecs,
+        }
+    },
+    l3docsyntax .code:n = {
+        \str_if_exist:NF \__fancyvrbx_env_explcode_name_str {
+            \fvxset {expl3code}
+        }
+        \exp_args:Nee \DefineVerbatimEnvironment {\__fancyvrbx_env_verbcode_name_str syntax} \__fancyvrbx_env_verbcode_name_str {
+            frame=l3docsyntax,
+        }
+        \exp_args:Nee \DefineVerbatimEnvironment {\__fancyvrbx_env_latexcode_name_str syntax} \__fancyvrbx_env_latexcode_name_str {
+            frame=l3docsyntax,
+        }
+        \exp_args:Nee \DefineVerbatimEnvironment {\__fancyvrbx_env_explcode_name_str syntax} \__fancyvrbx_env_explcode_name_str {
+            frame=l3docsyntax,
+        }
+    },
+    l3doc .default:n = {expl3code},
+    l3doc .meta:n = {expl3code={#1}, l3docsyntax},
+}
+}
+\cs_new_protected_nopar:Npn \fvxset {
+    \keys_set:nn {__fancyvrbx}
+}
+\ProcessKeyOptions [__fancyvrbx]
+%%
+%% This is file `fancyvrbx.sty',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% fancyvrbx.dtx  (with options: `preamble,package')
+%%
