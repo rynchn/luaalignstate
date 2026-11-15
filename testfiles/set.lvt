@@ -70,4 +70,10 @@
     \luaalignstate_use:n \TYPE
 }
 
+\TEST {add~123} {
+    \luaalignstate_use:n \TYPE
+    \luaalignstate_add:n {123}
+    \luaalignstate_use:n \TYPE
+}
+
 \END

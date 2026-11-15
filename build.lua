@@ -11,6 +11,6 @@ typesetfiles = {module .. ".dtx"}
 typesetsuppfiles = {"*.sty"}
 
 tdsroot = "luatex"
--- packtdszip = true
+packtdszip = true
 
 checkengines = {"luatex"}

@@ -184,7 +184,7 @@
 % \begin{texnote}
 % The \meta{int expr} may refer to the previous alignment counter value via \cs{luaalignstate_value:}, which within the \meta{int expr} expands to the value at the point where \cs{luaalignstate_set:n} is called (i.e., outside any braces surrounding or part of \meta{int expr}).
 %
-% On the other hand, the \meta{int value} should not refer directly to \cs{currentgrouplevel}, \cs{currentgrouptype}, or \cs{lastnodetype}, as their values will be wrong.
+% On the other hand, the \meta{int expr} should not refer directly to \cs{currentgrouplevel}, \cs{currentgrouptype}, or \cs{lastnodetype}, as their values will be wrong.
 % \end{texnote}
 % \end{function}
 %
@@ -539,7 +539,7 @@ return luaalignstate
 %<*package>
 \ProvidesExplPackage
     {luaalignstate}
-    {2026/10/01} {1}
+    {2026/11/15} {1}
     {Access the alignment counter in LuaTeX}
 \sys_if_engine_luatex:F {
     \PackageError {luaalignstate} {LuaTeX~required} {}
