@@ -18,7 +18,7 @@ Intended only for low-level programming and debugging; not for ordinary document
     pdflatex luaalignstate.dtx
     ```
 
-    The support file `fancyvrbx.sty` must be in the TeX search path (it is not needed to use the package, only to typeset the documentation).
+    The auxiliary file `support/fancyvrbx.sty` must be either in the TeX search path, or in a subdirectory of the current directory named `support/` (it is not needed to use the package, only to typeset the documentation).
 
 -   Only typeset the interface documentation:
 
@@ -26,9 +26,9 @@ Intended only for low-level programming and debugging; not for ordinary document
     pdflatex '\PassOptionsToClass{onlydoc}{l3doc}\input' luaalignstate.dtx
     ```
 
-    Alternatively, `l3build doc` in the source repository will do the same.
+-   `l3build doc` in the development repository will typeset both versions of the documentation.
 
-*Note:* the file `fancyvrbx.sty` is an ad-hoc auxiliary needed when compiling the documentation.
+*Note:* the file `support/fancyvrbx.sty` is a collection of ad-hoc macros used by the documentation.
 It is not meant to be installed or broadly usable.
 
 ## License and repository

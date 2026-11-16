@@ -2,12 +2,14 @@
 %<*preamble>
 %% SPDX-FileCopyrightText: 2026 Ruiyuan Chen
 %% SPDX-License-Identifier: MIT
-%%
-%% ---------------------------------------------------------------
-%% luaalignstate --- Access the alignment counter in LuaTeX
-%% ---------------------------------------------------------------
-%%
 %</preamble>
+%<*install>
+\def\PKGName        {luaalignstate}
+\def\PKGDescription {Access the alignment counter in \LuaTeX{}}
+\def\PKGDate        {2026/11/15}
+\def\PKGVersion     {1.0}
+\def\literalLuaTeX#1{LuaTeX#1}
+%</install>
 %<*internal>
 \expandafter\ifx\csname LaTeXReleaseInfo\endcsname\relax
     \def\endinstall{\endbatchfile}
@@ -20,26 +22,35 @@
 \keepsilent
 \askforoverwritefalse
 \def\MetaPrefix{\noexpand\CurrentMetaPrefix}
+%^^A The following makes |!| into a superscript character,
+%^^A and |^^\| into an escape character.
+%^^A The net effect is that |!!\macro| is parsed by \pkg{docstrip} as |\macro|,
+%^^A which expands into whatever |\macro| is defined as.
+%^^A (We choose |!| as it's normally `other' and so left alone by \pkg{docstrip}'s catcode normalization,
+%^^A and because the characters |!!| normally wouldn't appear in either \LaTeX{} or Lua source.)
+\catcode`\!=7\relax
+\catcode28=0\relax
 \preamble
 \endpreamble
 \usepreamble\empty
 \usepostamble\defaultpreamble
-\usedir{tex/luatex/\jobname}
+\usedir{tex/luatex/\PKGName}
 \let\CurrentMetaPrefix\DoubleperCent
-\generate{\file{\jobname.sty}{
-    \from{\jobname.dtx}{preamble,package}
+\let\LuaTeX\literalLuaTeX
+\generate{\file{\PKGName.sty}{
+    \from{\PKGName.dtx}{preamble,package}
 }}
 %</install>
 %<*internal>
-\usedir{source/luatex/\jobname}
-\generate{\file{\jobname.ins}{
-    \from{\jobname.dtx}{preamble,install}
+\usedir{source/luatex/\PKGName}
+\generate{\file{\PKGName.ins}{
+    \from{\PKGName.dtx}{preamble,install}
 }}
 %</internal>
 %<*install>
 \def\CurrentMetaPrefix{--}
-\generate{\file{\jobname.lua}{
-    \from{\jobname.dtx}{preamble,lua}
+\generate{\file{\PKGName.lua}{
+    \from{\PKGName.dtx}{preamble,lua}
 }}
 %</install>
 %<install>\endbatchfile
@@ -49,33 +60,59 @@
 %<*driver>
 \documentclass{l3doc}
 \usepackage{microtype}
-\usepackage[l3doc]{fancyvrbx}
 \hypersetup{bookmarksopenlevel=2}
 \DisableCrossrefs
 \ExplSyntaxOn
 \makeatletter
 \sys_if_engine_luatex:T {
-    \usepackage{\jobname}
+    \usepackage{\PKGName}
 }
+% kill l3doc's indexing
 \bool_set_false:N \l__codedoc_allow_indexing_bool
 \cs_gset_protected:Npn \@wrindex #1 {}
 \cs_gset_protected:Npn \codeline@wrindex #1 {}
 \cs_gset_protected:Npn \__codedoc_index_page_hc:nn #1 #2 {}
 \cs_gset_protected:Npn \__codedoc_index_codeline_hc:nn #1 #2 {}
+% replace |!!\macro| with contents of |\macro|
+\regex_const:Nn \c__mydoc_bang_bang_macro_regex
+    {\! \! \\ ([A-Za-z]+ | [^A-Za-z])}
+\cs_new_protected:Npn \__mydoc_replace_bang_bang_macro:N {
+    \regex_replace_all:NnN
+        \c__mydoc_bang_bang_macro_regex
+        {\c{use:c} \cB\{ \1 \cE\}}
+}
+\cs_new_eq:NN \__mydoc_replace_at_at:N \__codedoc_replace_at_at:N
+\cs_new_protected:Npn \__mydoc_replace_at_at_and_bang_bang_macro:N #1 {
+    \__mydoc_replace_at_at:N #1
+    \__mydoc_replace_bang_bang_macro:N #1
+}
+\cs_new_eq:NN \__mydoc_xmacro_code:n \__codedoc_xmacro_code:n
+\cs_gset_protected:Npn \__codedoc_xmacro_code:n #1 {
+    \group_begin:
+    \cs_set_eq:NN \__codedoc_replace_at_at:N \__mydoc_replace_at_at_and_bang_bang_macro:N
+    \let\LuaTeX\literalLuaTeX
+    \__mydoc_xmacro_code:n {#1}
+    \group_end:
+}
+% English pseudocode placeholder text
 \NewDocumentCommand \metacode {m} {
     \textnormal {\textlangle \emph{#1} \textrangle}
 }
+\seq_put_right:Nn \l_file_search_path_seq {./support}
 \makeatother
 \ExplSyntaxOff
+\usepackage[l3doc]{fancyvrbx}
 \begin{document}
-\DocInput{\jobname.dtx}
+\DocInput{\PKGName.dtx}
 \end{document}
 %</driver>
 % \fi
 %
-% \title{\pkg{luaalignstate} --- Access the alignment counter in \LuaTeX{}}
+% \makeatletter
+% \title{\pkg{\PKGName} --- \PKGDescription}
 % \author{Ruiyuan Chen}
-% \date{}
+% \date{\PKGDate \space v\PKGVersion}
+% \makeatother
 % \maketitle
 %
 %
@@ -208,6 +245,15 @@
 %    \begin{macrocode}
 %<*lua>
 %<@@=luaalignstate>
+local luaalignstate = {
+    module_info = {
+        name        = "!!\PKGName",
+        description = "!!\PKGDescription",
+        date        = "!!\PKGDate",
+        version     = "!!\PKGVersion",
+    },
+}
+if luatexbase then luatexbase.provides_module(luaalignstate.module_info) end
 %    \end{macrocode}
 %
 %
@@ -331,34 +377,22 @@ end
 % The |scan_code()| is used to flush the two token lists inserted by |runtoks()| from the error context.
 % (Unfortunately, there seems to be no way to also flush the pushed |\endtemplate|.)
 %    \begin{macrocode}
-local fatal_error do
-local fatal_error_msg
-local fatal_error_help
-local function fatal_error_run()
-    token_get_next()
-    token_put_next(TOKEN_endv)
-    if luatex.interactionmode > 1 then
-        token_put_next(TOKEN_immediateassignment, TOKEN_nonstopmode)
-    end
-    token_scan_code(0)
-    return luatex.error(fatal_error_msg, fatal_error_help)
-end
-function fatal_error(msg, help)
-    fatal_error_msg = msg
-    fatal_error_help = help or {}
-    return tex_runtoks(fatal_error_run)
-end
+local function fatal_error(msg, help)
+    return tex_runtoks(function ()
+        token_get_next()
+        token_put_next(TOKEN_endv)
+        if luatex.interactionmode > 1 then
+            token_put_next(TOKEN_immediateassignment, TOKEN_nonstopmode)
+        end
+        token_scan_code(0)
+        return luatex.error(msg, help or {})
+    end)
 end
 %    \end{macrocode}
 % \end{macro}
 %
 %
 % \subsection{Getting and setting the alignment counter}
-%
-% The module table.
-%    \begin{macrocode}
-local luaalignstate = {}
-%    \end{macrocode}
 %
 % Now for the main hack.
 % The strategy is to execute (the equivalent of)
@@ -468,7 +502,7 @@ local function getset_run()
 % Set the mode to internal vertical, to prevent |\halign| from complaining.
 % The enclosing mode is already remembered and restored by |runtoks()|.
 %    \begin{macrocode}
-    tex_getnest(tex_getnest("ptr")).mode = -MODE_vmode
+    tex_getnest().mode = -MODE_vmode
 %    \end{macrocode}
 % Now put an |align_stack| on the free list, record its address, and insert the |halign| tokens.
 %    \begin{macrocode}
@@ -538,11 +572,12 @@ return luaalignstate
 %    \begin{macrocode}
 %<*package>
 \ProvidesExplPackage
-    {luaalignstate}
-    {2026/11/15} {1}
-    {Access the alignment counter in LuaTeX}
+    {!!\PKGName}
+    {!!\PKGDate}
+    {!!\PKGVersion}
+    {!!\PKGDescription}
 \sys_if_engine_luatex:F {
-    \PackageError {luaalignstate} {LuaTeX~required} {}
+    \PackageError {!!\PKGName} {LuaTeX~required} {}
     \file_input_stop:
 }
 %    \end{macrocode}
@@ -556,7 +591,7 @@ return luaalignstate
 \group_end:
 \lua_now:n}{{
     local tostring = tostring
-    local tex_sprint = tex.sprint
+    local tex_write = tex.write
     local token_scan_int = token.scan_int
     local token_set_lua = token.set_lua
     local token_set_macro = token.set_macro
@@ -577,7 +612,7 @@ return luaalignstate
 % The getter is straightforward.
 %    \begin{macrocode}
     luacmd("luaalignstate_value:", function ()
-        return tex_sprint(-2, tostring(luaalignstate_getset()))
+        return tex_write(tostring(luaalignstate_getset()))
     end)
 %    \end{macrocode}
 % \end{macro}
